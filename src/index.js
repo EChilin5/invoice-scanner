@@ -7,7 +7,10 @@ import { classify } from './classifier.js';
 const auth = await authorize();
 
 await startPolling(auth, async (id) => {
+
+  // pulls the email data 
   const email = await getEmail(auth, id);
+  // determines whther it's an invoice
   const result = await classify(email);
 
   console.log('----------------------------------------');

@@ -7,6 +7,7 @@ const decode = (data) => Buffer.from(data, 'base64url').toString('utf8');
 const headerValue = (headers, name) =>
   headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? '';
 
+// removes html text from the email body
 function stripHtml(html) {
   return html
     .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -18,7 +19,7 @@ function stripHtml(html) {
     .trim();
 }
 
-// Walk the MIME tree, collecting text, html, and attachment references
+// Walk the MIME tree of the emails, collects it and sorts into text, html, and attachment references
 function walk(part, out) {
   if (part.filename) {
     out.attachmentRefs.push({
@@ -37,14 +38,17 @@ function walk(part, out) {
 }
 
 export async function getEmail(auth, id) {
+ // create a gmail client
   const gmail = google.gmail({ version: 'v1', auth });
 
+  // fetches the message
   const { data: msg } = await gmail.users.messages.get({
     userId: 'me',
     id,
     format: 'full',
   });
 
+  // out is the format of the email object
   const out = { text: '', html: '', attachmentRefs: [] };
   walk(msg.payload, out);
 
@@ -56,6 +60,7 @@ export async function getEmail(auth, id) {
     }
     let buffer;
     if (ref.attachmentId) {
+      // download the file content
       const { data } = await gmail.users.messages.attachments.get({
         userId: 'me',
         messageId: id,
@@ -63,6 +68,7 @@ export async function getEmail(auth, id) {
       });
       buffer = Buffer.from(data.data, 'base64url');
     } else if (ref.inlineData) {
+      // decodes inline data in an email
       buffer = Buffer.from(ref.inlineData, 'base64url');
     } else {
       continue;
