@@ -11,8 +11,14 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const SYSTEM_PROMPT = `You classify emails for an accounts-payable inbox.
 
 An email is an INVOICE if it contains a completed payment for goods, order reciept or services and includes
-details such as an invoice number, amount paid, or date transaction paid.
+details such as an invoice number, amount paid, or day transaction paid.
 The invoice may be in the email body or in an attachment.
+
+If the email is an invoice or reciept, also extract vendor_name, invoice_number (if provided), 
+due_date, and  amount paid.  Only report values actually shown in the email or its
+attachments. Never guess or calculate a value; use null when a field is missing or
+unclear. For total paid, use the total amount paid, not a subtotal or a line item.
+If the email is not an invoice or invoice, set all extraction fields to null.
 
 These are NOT invoices: marketing emails,
 newsletters, quotes or estimates, notifications, and emails that merely
@@ -39,6 +45,30 @@ const TOOL = {
       },
       reason: { type: 'string', description: 'One or two sentences' },
     },
+     vendor_name: {
+        type: ['string', 'null'],
+        description: 'Company that issued the invoice (the seller), not the recipient. null if not found.',
+      },
+      invoice_number: {
+        type: ['string', 'null'],
+        description: 'Invoice number or ID exactly as written. null if not found.',
+      },
+      invoice_date: {
+        type: ['string', 'null'],
+        description: 'Date the invoice was issued, as YYYY-MM-DD. null if not found.',
+      },
+      due_date: {
+        type: ['string', 'null'],
+        description: 'Payment due date, as YYYY-MM-DD. null if not found.',
+      },
+      amount_due: {
+        type: ['number', 'null'],
+        description: 'Total amount due as a plain number with no currency symbol, e.g. 1234.50. null if not found.',
+      },
+      currency: {
+        type: ['string', 'null'],
+        description: 'Three-letter currency code such as USD or EUR. null if not found.',
+      },
     required: ['is_invoice', 'confidence', 'document_type', 'reason'],
   },
 };
@@ -117,12 +147,20 @@ export async function classify(email) {
 
     // assings data to r after validating data
     const r = block.input;
+    const amount = Number(r.amount_due);
+
     return {
-      is_invoice: Boolean(r.is_invoice),
-      confidence: Math.min(1, Math.max(0, Number(r.confidence) || 0)),
-      document_type: r.document_type,
-      reason: String(r.reason ?? ''),
-      needs_review: false,
+       is_invoice: Boolean(r.is_invoice),
+  confidence: Math.min(1, Math.max(0, Number(r.confidence) || 0)),
+  document_type: r.document_type,
+  reason: String(r.reason ?? ''),
+  vendor_name: r.vendor_name ?? null,
+  invoice_number: r.invoice_number ?? null,
+  invoice_date: r.invoice_date ?? null,
+  due_date: r.due_date ?? null,
+  amount_due: r.amount_due != null && Number.isFinite(amount) ? amount : null,
+  currency: r.currency ?? null,
+  needs_review: false,
     };
   } catch (err) {
     // A failure is never treated as "not an invoice"

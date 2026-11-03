@@ -18,6 +18,10 @@ await startPolling(auth, async (id) => {
   console.log('Invoice?   ', result.is_invoice, `(${result.confidence})`);
   console.log('Type:      ', result.document_type);
   console.log('Reason:    ', result.reason);
+  console.log('Vendor:    ', result.vendor_name);
+console.log('Invoice #: ', result.invoice_number);
+console.log('Issued:    ', result.invoice_date, '| Due:', result.due_date);
+console.log('Amount:    ', result.amount_due, result.currency);
   if (result.needs_review) console.log('** NEEDS REVIEW **');
 });
 
