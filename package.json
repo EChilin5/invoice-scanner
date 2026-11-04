@@ -16,6 +16,7 @@
     "@google-cloud/local-auth": "^3.0.1",
     "better-sqlite3": "^13.0.3",
     "dotenv": "^18.0.9",
-    "googleapis": "^188.0.0"
+    "googleapis": "^188.0.0",
+    "html-to-text": "^10.0.1"
   }
 }

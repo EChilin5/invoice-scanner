@@ -1,23 +1,63 @@
 import { google } from "googleapis";
+import { convert } from "html-to-text";
 
-const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // skip files over 10 MB for the prototype
+
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024; // keep prototype requests small and cheap
 
 const decode = (data) => Buffer.from(data, "base64url").toString("utf8");
 
 const headerValue = (headers, name) =>
   headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? "";
 
-// removes html text from the email body
-function stripHtml(html) {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
+
+// // removes html text from the email body
+// const ENTITIES = {
+//   nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'",
+//   euro: "€", pound: "£", yen: "¥", cent: "¢", dollar: "$",
+// };
+
+// function decodeEntities(s) {
+//   return s
+//     .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+//     .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+//     .replace(/&([a-z]+);/gi, (m, n) => ENTITIES[n.toLowerCase()] ?? m);
+// }
+
+// function stripHtml(html) {
+//   const text = html
+//     .replace(/<!--[\s\S]*?-->/g, "")
+//     .replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, "")
+//     .replace(/<br\s*\/?>/gi, "\n")
+//     .replace(/<\/(td|th)>/gi, "\t")            // keep label and amount in the same row
+//     .replace(/<\/(p|div|tr|li|h[1-6]|table)>/gi, "\n")
+//     .replace(/<[^>]+>/g, "");
+
+//   return decodeEntities(text)
+//     .replace(/[ \u00a0]+/g, " ")               // collapse spaces, not newlines
+//     .replace(/[ \t]*\n[ \t]*/g, "\n")
+//     .replace(/\n{3,}/g, "\n\n")
+//     .trim();
+// }
+
+
+const htmlToText = (html) =>
+  convert(html, {
+    wordwrap: false,
+    baseElements: { selectors: ["body"], returnDomByDefault: true }, // ignores <head>
+    limits: { maxInputLength: 500000 },                              // guards against huge emails
+    selectors: [
+      { selector: "img", format: "skip" },
+      { selector: "a", options: { ignoreHref: true } },              // drops long tracking URLs
+      {
+        selector: "table",
+        format: "dataTable",
+        options: { uppercaseHeaderCells: false, maxColumnWidth: 200 },
+      },
+    ],
+  })
+    .replace(/[ \u00a0]+\n/g, "\n")   // trailing spaces
+    .replace(/\n{3,}/g, "\n\n")       // excess blank lines
     .trim();
-}
 
 // Walk the MIME tree of the emails, collects it and sorts into text, html, and attachment references
 function walk(part, out) {
@@ -108,12 +148,17 @@ export async function getEmail(auth, id) {
   }
 
   const headers = msg.payload.headers ?? [];
+  const plain = out.text.trim();
+const fromHtml = out.html ? htmlToText(out.html) : "";
+
+// Prefer HTML unless the plain text is clearly as complete
+const body_text = fromHtml.length > plain.length ? fromHtml : plain;
   return {
     id,
     subject: headerValue(headers, "Subject") || "(no subject)",
     from: headerValue(headers, "From"),
     date: headerValue(headers, "Date"),
-    body: out.text || stripHtml(out.html),
+    body: body_text,
     attachments,
     failedAttachments, // lets the caller flag the email for review
   };
