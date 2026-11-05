@@ -30,7 +30,8 @@ it's a invoice with step and include the subject of the email within your reason
 
 These are NOT invoices, receipts, url reciept, or steps as follows : marketing emails,
 newsletters, quotes or estimates, notifications, and emails that merely
-mention the word "invoice" or "reciept" without containing one.
+mention the word "invoice" or "reciept" without containing one. Additionally emails that just 
+includes steps and url that are not associated with retrieving an invoice or receipt.
 
 When unsure, lean toward is_invoice = true with lower confidence, because
 missing a real invoice is worse than a false alarm.`;
