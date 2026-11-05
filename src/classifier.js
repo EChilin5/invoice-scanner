@@ -19,8 +19,9 @@ The invoice may be in the email body or in an attachment.
 If the email is an invoice or reciept, also extract vendor_name, invoice_number (if provided),
 due_date, and  amount_due.  Only report values actually shown in the email or its
 attachments. Never guess or calculate a value; use null when a field is missing or
-unclear. For amount_due, use the total amount paid, not a subtotal or a line item. 
-For due_date use the date that the payment was proccessed if listed.
+unclear. For amount_due, use the total amount paid, not a subtotal or a line item. If there is 
+no amount_due listed in the email classify it as other. For due_date use the date that the payment 
+was proccessed if listed.
 
 If the email contains a link that directs you to a reciept or invoice state the type as url reciept
 and include the url within your reason along with the company name and email subject. Do not open the url
