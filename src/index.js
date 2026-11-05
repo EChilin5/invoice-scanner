@@ -11,6 +11,9 @@ await startPolling(auth, async (id) => {
 // pulls the email data
   const email = await getEmail(auth, id);
 
+  // skips any dead 
+  if (!email) return; // skip and move on, don't fail the whole poll
+
       // Don't classify if any attachment couldn't be read
     if (email.failedAttachments?.length > 0) {
       console.log('----------------------------------------');

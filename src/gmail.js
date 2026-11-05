@@ -90,6 +90,13 @@ export async function getEmail(auth, id) {
     });
     msg = res.data;
   } catch (err) {
+    console.log("__________________________________")
+   const status = err.code ?? err.response?.status;
+    if (status === 404) {
+      // Message was deleted/moved between listing and fetching
+      console.warn(`Email ${id} no longer exists, skipping`);
+      return null;
+    }
     console.error(`Failed to fetch email ${id}:`, err.message);
     throw new Error(`Could not fetch email ${id}: ${err.message}`);
   }
