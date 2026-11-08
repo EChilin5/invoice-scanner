@@ -167,6 +167,7 @@ const body_text = fromHtml.length > plain.length ? fromHtml : plain;
     date: headerValue(headers, "Date"),
     body: body_text,
     attachments,
+    html: out.html,
     failedAttachments, // lets the caller flag the email for review
   };
 }

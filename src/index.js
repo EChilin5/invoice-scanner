@@ -3,6 +3,8 @@ import { authorize } from "./auth.js";
 import { startPolling } from "./watcher.js";
 import { getEmail } from "./gmail.js";
 import { classify } from "./classifier.js";
+import { emailToPdf } from './pdf.js';
+
 
 const auth = await authorize();
 
@@ -36,6 +38,13 @@ await startPolling(auth, async (id) => {
   console.log("Issued:    ", result.invoice_date, "| Due:", result.due_date);
   console.log("Amount:    ", result.amount_due, result.currency);
   if (result.needs_review) console.log("** NEEDS REVIEW **");
+
+// inside the handler, after classify:
+if (result.is_invoice && result.confidence >= 0.7) {
+  const pdfPath = await emailToPdf(email);
+  console.log('Saved email PDF:', pdfPath);
+}
+
 });
 
 console.log("Watching for new mail... (Ctrl+C to stop)");
