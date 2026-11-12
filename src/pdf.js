@@ -9,7 +9,7 @@ const esc = (s) =>
 export async function emailToPdf(email, outDir = 'attachments') {
     // creates the default file in attachments
   fs.mkdirSync(outDir, { recursive: true });
-  const outPath = path.join(outDir, `${email.id}_email.pdf`);
+  const outPath = path.join(outDir, `${email.subject}_${email.id}_email.pdf`);
 
   // Use the original HTML if there is any, otherwise the plain-text body
   const content = email.html
