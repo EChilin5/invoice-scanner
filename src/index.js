@@ -77,13 +77,11 @@ await startPolling(auth, async (id) => {
     const dropboxPaths = []; // 1. NEW: declare the array
 
     if (email.attachments.length === 0) {
-      const pdfPath = await emailToPdf(email);
-      console.log("Saved email PDF:", pdfPath);
+     
+      const pdfBuffer = await emailToPdf(email);
+      const emailPdf = { filename: 'email.pdf', buffer: pdfBuffer };
       try {
-        const emailPdf = {
-          filename: "email.pdf",
-          buffer: fs.readFileSync(pdfPath),
-        };
+       
         const dropboxPath = await uploadToDropbox(email, emailPdf, result);
         dropboxPaths.push(dropboxPath); // 2. NEW: collect the path
         console.log("Uploaded email PDF to Dropbox:", dropboxPath);

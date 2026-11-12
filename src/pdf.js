@@ -1,16 +1,12 @@
 import puppeteer from 'puppeteer';
-import fs from 'node:fs';
-import path from 'node:path';
+// import fs from 'node:fs';
+// import path from 'node:path';
 
 // remove any html symbols left from the body
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-export async function emailToPdf(email, outDir = 'attachments') {
-    // creates the default file in attachments
-  fs.mkdirSync(outDir, { recursive: true });
-  const outPath = path.join(outDir, `${email.subject}_${email.id}_email.pdf`);
-
+export async function emailToPdf(email) {
   // Use the original HTML if there is any, otherwise the plain-text body
   const content = email.html
     ? email.html
@@ -27,7 +23,6 @@ export async function emailToPdf(email, outDir = 'attachments') {
   ${content}
 </body>`;
 
- // opens the email in browser does not count as a read email
   const browser = await puppeteer.launch({ headless: true });
   try {
     const page = await browser.newPage();
@@ -41,17 +36,16 @@ export async function emailToPdf(email, outDir = 'attachments') {
       else req.abort(); // blocks remote images and tracking pixels
     });
 
-    // loads html into the page 
-    // waits for it to load and then saves it
     await page.setContent(html, { waitUntil: 'load' });
-    await page.pdf({
-      path: outPath,
+
+    // No "path" option, so Puppeteer returns the PDF as bytes instead of saving a file
+    const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
       margin: { top: '15mm', bottom: '15mm', left: '12mm', right: '12mm' },
     });
+    return Buffer.from(pdf);
   } finally {
-    await browser.close();
+    await browser.close(); // still runs even though we return inside try
   }
-  return outPath;
 }
