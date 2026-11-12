@@ -16,12 +16,15 @@ details such as an invoice number, amount paid, or day transaction paid.
 The invoice may be in the email body or in an attachment.
 
 
-If the email is an invoice or reciept, also extract vendor_name, invoice_number (if provided),
+If the email is an invoice or reciept, extract vendor_name, invoice_number (if provided),
 due_date, and  amount_due.  Only report values actually shown in the email or its
 attachments. Never guess or calculate a value; use null when a field is missing or
 unclear. For amount_due, use the total amount paid, not a subtotal or a line item. If there is 
 no amount_due listed in the email classify it as other. For due_date use the date that the payment 
 was proccessed if listed.
+
+If an email contains an attachment with a keyword receipt, paid, or transaction completed provide the name of
+file in attachment_read.
 
 If the email contains a link that directs you to a reciept or invoice state the type as url reciept
 and include the url within your reason along with the company name and email subject. Do not open the url
@@ -82,6 +85,11 @@ const TOOL = {
       type: ["string", "null"],
       description:
         "Three-letter currency code such as USD or EUR. null if not found.",
+    },
+        attachment_read: {
+      type: ["string", "null"],
+      description:
+        "The name of the attachment that was read that contains a paid amount to company",
     },
     required: ["is_invoice", "confidence", "document_type", "reason"],
   },
@@ -192,6 +200,7 @@ export async function classify(email) {
       amount_due:
         r.amount_due != null && Number.isFinite(amount) ? amount : null,
       currency: r.currency ?? null,
+      attachment_read: r.attachment_read ?? null,
       needs_review: false,
     };
   } catch (err) {
