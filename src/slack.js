@@ -82,7 +82,7 @@ export async function notifyInvoice(email, result, dropboxPaths = []) {
   });
 }
 
-export async function notifyReviewNeeded(email, result,) {
+export async function notifyReviewNeeded(email, result, emailType) {
   const vendor = result?.vendor_name ?? email.from ?? 'Unknown vendor';
 
   await post({
@@ -94,6 +94,7 @@ export async function notifyReviewNeeded(email, result,) {
           type: 'mrkdwn',
           text:
             `:eyes: *Please check this email*\n` +
+            `This email contains a ${emailType} that directs you to an invoice.` +
             `*Vendor:* ${esc(vendor)}\n` +
             `*Subject:* ${esc(email.subject)}`,
         },

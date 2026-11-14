@@ -1,5 +1,4 @@
 import "dotenv/config";
-import fs from "node:fs";
 import { authorize } from "./auth.js";
 import { startPolling } from "./watcher.js";
 import { getEmail } from "./gmail.js";
@@ -7,7 +6,6 @@ import { classify } from "./classifier.js";
 import { emailToPdf } from "./pdf.js";
 import { uploadToDropbox } from "./dropbox.js";
 import { notifyInvoice, notifyReviewNeeded } from "./slack.js";
-import { file } from "googleapis/build/src/apis/file/index.js";
 
 const auth = await authorize();
 
@@ -67,11 +65,16 @@ await startPolling(auth, async (id) => {
 
   if (result.needs_review) console.log("** NEEDS REVIEW **");
 
-     if (result.is_invoice && result.confidence >= 0.7) {
-  if(['email steps', 'email url'].includes(result.document_type)){
-    notifyReviewNeeded(email, result)
-    console.log("An email with steps or url was found");
+  // remove result.confidence >= 0.7
+  // capcut email confidence 0.6
+     if (result.is_invoice) {
+  if(['email url'].includes(result.document_type)){
+    notifyReviewNeeded(email, result, result.document_type)
+    console.log("An email with a url was found");
 
+  }else if(['email steps',].includes(result.document_type)){
+    notifyReviewNeeded(email, result, result.document_type)
+    console.log("An email with steps was found");
   }else{
 
     const dropboxPaths = []; // 1. NEW: declare the array
@@ -113,21 +116,7 @@ await startPolling(auth, async (id) => {
     }
   }
 }
-      // Upload the original attachments
 
-      // for (const a of email.attachments) {
-      //   try {
-      //     const dropboxPath = await uploadToDropbox(email, a, result);
-      //     dropboxPaths.push(dropboxPath); // 3. NEW: collect each path
-      //     console.log("Uploaded to Dropbox:", dropboxPath);
-      //   } catch (err) {
-      //     console.error(
-      //       `Dropbox upload failed for ${a.filename}:`,
-      //       err.message,
-      //     );
-      //   }
-      // }
-    
 
     // Flag invoices where key fields are missing
     if (result.amount_due == null || !result.vendor_name){
