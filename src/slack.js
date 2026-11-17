@@ -94,7 +94,7 @@ export async function notifyReviewNeeded(email, result, emailType) {
           type: 'mrkdwn',
           text:
             `:eyes: *Please check this email*\n` +
-            `This email contains a ${emailType} that directs you to an invoice.` +
+            `This email contains a ${emailType} that directs you to an invoice.\n` +
             `*Vendor:* ${esc(vendor)}\n` +
             `*Subject:* ${esc(email.subject)}`,
         },
