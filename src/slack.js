@@ -46,6 +46,7 @@ export async function notifyInvoice(email, result, dropboxPaths = []) {
         { type: 'mrkdwn', text: `*Due date*\n${esc(result.due_date ?? 'not found')}` },
       ],
     },
+     { type: 'divider' },
     {
       type: 'section',
       text: {
@@ -53,7 +54,7 @@ export async function notifyInvoice(email, result, dropboxPaths = []) {
         text:
           `*Subject:* ${esc(email.subject)}\n` +
           `*From:* ${esc(email.from)}\n` +
-          `*Confidence:* ${confidence}%`,
+          `*Confidence:* ${confidence}% \n` 
       },
     },
   ];
@@ -67,6 +68,15 @@ export async function notifyInvoice(email, result, dropboxPaths = []) {
       },
     });
   }
+     blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `<!channel>`,
+      },
+    });
+
+
 
   if (result.needs_review) {
     blocks.push({
@@ -96,7 +106,8 @@ export async function notifyReviewNeeded(email, result, emailType) {
             `:eyes: *Please check this email*\n` +
             `This email contains a ${emailType} that directs you to an invoice.\n` +
             `*Vendor:* ${esc(vendor)}\n` +
-            `*Subject:* ${esc(email.subject)}`,
+            `*Subject:* ${esc(email.subject)}\n`+
+            `<!channel>`
         },
       },
     ],
