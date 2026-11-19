@@ -61,5 +61,32 @@ export async function uploadToDropbox(email, attachment, result) {
     autorename: true, // if the name exists, Dropbox adds " (1)" instead of overwriting
     mute: true,
   });
-  return meta.path_display;
+
+
+  // Use the path from the response
+  const url = await getSharedLink(meta.path_lower);
+  return { path: meta.path_display, url };
+}
+
+async function getSharedLink(path) {
+  try {
+    const { result } = await dbx.sharingCreateSharedLinkWithSettings({
+      path,
+      settings: {
+        requested_visibility: { '.tag': 'public' },
+        access: { '.tag': 'viewer' },
+      },
+    });
+    return result.url;
+  } catch (err) {
+    // If a link already exists for this file, Dropbox throws instead of returning it
+    if (err?.error?.error?.['.tag'] === 'shared_link_already_exists') {
+      const { result } = await dbx.sharingListSharedLinks({
+        path,
+        direct_only: true,
+      });
+      if (result.links.length) return result.links[0].url;
+    }
+    throw err;
+  }
 }

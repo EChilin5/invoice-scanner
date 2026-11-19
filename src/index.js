@@ -9,10 +9,12 @@ import { notifyInvoice, notifyReviewNeeded } from "./slack.js";
 
 const auth = await authorize();
 
-const norm = (s) => String(s ?? '').trim().toLowerCase();
+const norm = (s) =>
+  String(s ?? "")
+    .trim()
+    .toLowerCase();
 
 function findInvoiceAttachment(email, filename) {
-
   if (!filename) return null;
 
   // 1. Exact match
@@ -25,7 +27,9 @@ function findInvoiceAttachment(email, filename) {
 
   // 3. One name contains the other (Claude may have shortened it)
   const matches = email.attachments.filter(
-    (a) => norm(a.filename).includes(norm(filename)) || norm(filename).includes(norm(a.filename))
+    (a) =>
+      norm(a.filename).includes(norm(filename)) ||
+      norm(filename).includes(norm(a.filename)),
   );
   return matches.length === 1 ? matches[0] : null; // only trust an unambiguous match
 }
@@ -67,75 +71,80 @@ await startPolling(auth, async (id) => {
 
   // remove result.confidence >= 0.7
   // capcut email confidence 0.6
-     if (result.is_invoice) {
-  if(['email url'].includes(result.document_type)){
-    notifyReviewNeeded(email, result, result.document_type)
-    console.log("An email with a url was found");
-
-  }else if(['email steps',].includes(result.document_type)){
-    notifyReviewNeeded(email, result, result.document_type)
-    console.log("An email with steps was found");
-  }else{
-
-    const dropboxPaths = []; // 1. NEW: declare the array
-
-    if (email.attachments.length === 0) {
-     
-      const pdfBuffer = await emailToPdf(email);
-      const emailPdf = { filename: 'email.pdf', buffer: pdfBuffer };
-      try {
-       
-        const dropboxPath = await uploadToDropbox(email, emailPdf, result);
-        dropboxPaths.push(dropboxPath); // 2. NEW: collect the path
-        console.log("Uploaded email PDF to Dropbox:", dropboxPath);
-      } catch (err) {
-        console.error("Dropbox upload failed for email PDF:", err.message);
-        console.error("Details:", JSON.stringify(err.error ?? err, null, 2));
-      }
+  if (result.is_invoice) {
+    if (["email url"].includes(result.document_type)) {
+      notifyReviewNeeded(email, result, result.document_type);
+      console.log("An email with a url was found");
+    } else if (["email steps"].includes(result.document_type)) {
+      notifyReviewNeeded(email, result, result.document_type);
+      console.log("An email with steps was found");
     } else {
-  const invoiceFile = findInvoiceAttachment(email, result.attachment_read);
+      const dropboxPaths = []; // 1. NEW: declare the array
 
-  if (invoiceFile) {
-    try {
-      dropboxPaths.push(await uploadToDropbox(email, invoiceFile, result));
-      console.log('Uploaded to Dropbox:', dropboxPaths[0]);
-    } catch (err) {
-      console.error(`Dropbox upload failed for ${invoiceFile.filename}:`, err.message);
-    }
-  } else {
-    // Claude gave no filename, or it matched nothing: don't guess silently
-    console.warn('No matching attachment for:', result.invoice_filename);
-    result.needs_review = true;
-    // Fallback: upload every attachment so nothing is lost
-    for (const a of email.attachments) {
+      if (email.attachments.length === 0) {
+        const pdfBuffer = await emailToPdf(email);
+        const emailPdf = { filename: "email.pdf", buffer: pdfBuffer };
+        try {
+          const uploaded = await uploadToDropbox(email, emailPdf, result);
+          dropboxPaths.push(uploaded);
+          console.log("Uploaded email PDF to Dropbox:", uploaded.path);
+          console.log("Uploaded url PDF from Dropbox:", uploaded.url);
+        } catch (err) {
+          console.error("Dropbox upload failed for email PDF:", err.message);
+          console.error("Details:", JSON.stringify(err.error ?? err, null, 2));
+        }
+      } else {
+        const invoiceFile = findInvoiceAttachment(
+          email,
+          result.attachment_read,
+        );
+
+        if (invoiceFile) {
+          try {
+            const uploaded = await uploadToDropbox(email, invoiceFile, result);
+            dropboxPaths.push(uploaded);
+            console.log(Array.isArray(uploaded), uploaded);
+          } catch (err) {
+            console.error(
+              `Dropbox upload failed for ${invoiceFile.filename}:`,
+              err.message,
+            );
+            console.error(
+              "Details:",
+              JSON.stringify(err.error ?? err, null, 2),
+            );
+          }
+        } else {
+          // Claude gave no filename, or it matched nothing: don't guess silently
+          console.warn("No matching attachment for:", result.invoice_filename);
+          result.needs_review = true;
+          // Fallback: upload every attachment so nothing is lost
+          for (const a of email.attachments) {
+            try {
+              dropboxPaths.push(await uploadToDropbox(email, a, result));
+            } catch (err) {
+              console.error(
+                `Dropbox upload failed for ${a.filename}:`,
+                err.message,
+              );
+            }
+          }
+        }
+      }
+
+      // Flag invoices where key fields are missing
+      if (result.amount_due == null || !result.vendor_name) {
+        result.needs_review = true;
+      }
+
       try {
-        dropboxPaths.push(await uploadToDropbox(email, a, result));
+       await notifyInvoice(email, result, dropboxPaths);
+        console.log("Slack notification sent");
       } catch (err) {
-        console.error(`Dropbox upload failed for ${a.filename}:`, err.message);
+        console.error("Slack notification failed:", err.message);
       }
     }
   }
-}
-
-
-    // Flag invoices where key fields are missing
-    if (result.amount_due == null || !result.vendor_name){
-            result.needs_review = true;
-
-    }
-
-    try {
-      await notifyInvoice(email, result, dropboxPaths);
-      console.log("Slack notification sent");
-    } catch (err) {
-      console.error("Slack notification failed:", err.message);
-    }
-  }
-  }
-
-  
-
-
 });
 
 console.log("Watching for new mail... (Ctrl+C to stop)");
